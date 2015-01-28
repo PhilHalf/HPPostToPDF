@@ -18,8 +18,6 @@ Author: Phil Halfpenny
 */
 if ( !class_exists( 'HPPostToPDF' ) ) {
 	class HPPostToPDF {
-		private $_fileName;
-
 		function __construct( ) {
 			if ( !is_admin( ) ) {
 				add_action( 'wp', array( &$this, 'create_pdf' ) );
@@ -30,42 +28,36 @@ if ( !class_exists( 'HPPostToPDF' ) ) {
 			if ( '1' == ( isset( $_GET['p2p_output'] ) ? $_GET['p2p_output'] : null ) ) {
 				global $post;
 				$post = get_post();
+				$fileName = $post->post_name . '.pdf';
 
-				$this->_fileName = $post->post_name . '.pdf';
-				
-				$this->convert_to_pdf( $post->ID );
+				$markup = file_get_contents( remove_query_arg( array( 'p2p_output' ), TC_Library::get_current_url( ) ) );
+				if (preg_match('/(?:<body[^>]*>)(.*)<\/body>/isU', $markup, $matches)) {
+			        $markup = $matches[1];
+			    }
+
+			    $css_link = '';
+			    if ( file_exists( get_stylesheet_directory( ) . '/pdf.css' ) ) {
+					$css_link = '<link href="' . get_stylesheet_directory_uri( ) . '/pdf.css" type="text/css" rel="stylesheet" />';
+				}
+				elseif ( file_exists( get_stylesheet_directory( ) . '/print.css' ) ) {
+					$css_link .= '<link href="' . get_stylesheet_directory_uri( ) . '/print.css" type="text/css" rel="stylesheet" />';
+				}
+				else {
+					$css_link .= '<link href="' . get_stylesheet_directory_uri( ) . '/style.css" type="text/css" rel="stylesheet" />';
+				}
+
+				$markup = $css_link . $markup;
+
+				$markup = preg_replace('~<img .*?\.(gif|png)".*?/>~sim', '', $markup);
+
+				require_once dirname( __FILE__ ) . '/dompdf/dompdf_config.inc.php';
+
+				$dompdf = new DOMPDF( );
+				$dompdf->load_html( $markup );
+				$dompdf->render( );
+
+				$dompdf->stream( $fileName, array( 'Attachment' => true ) );
 			}
-		}
-
-		private function convert_to_pdf( $post_id ) {
-			$post = get_post( $post_id );
-			
-			
-			$post->post_content = wpautop( $post->post_content );
-			$post->post_content = do_shortcode( $post->post_content );
-			
-			$html = '<div class="pdf_container">';
-			if ( file_exists( get_stylesheet_directory( ) . '/pdf.css' ) ) {
-				$html .= '<link href="' . get_stylesheet_directory_uri( ) . '/pdf.css" type="text/css" rel="stylesheet" />';
-			}
-			elseif ( file_exists( get_stylesheet_directory( ) . '/print.css' ) ) {
-				$html .= '<link href="' . get_stylesheet_directory_uri( ) . '/print.css" type="text/css" rel="stylesheet" />';
-			}
-			else {
-				$html .= '<link href="' . get_stylesheet_directory_uri( ) . '/style.css" type="text/css" rel="stylesheet" />';
-			}
-			
-			$html .= htmlspecialchars_decode( htmlentities( $post->post_content, ENT_NOQUOTES, 'UTF-8', false ), ENT_NOQUOTES );
-
-			$html .= '</div>';
-
-			require_once dirname( __FILE__ ) . '/dompdf/dompdf_config.inc.php';
-
-			$dompdf = new DOMPDF( );
-			$dompdf->load_html( $html );
-			$dompdf->render( );
-
-			$dompdf->stream( $this->_fileName, array( 'Attachment' => true ) );
 		}
 	}
 
