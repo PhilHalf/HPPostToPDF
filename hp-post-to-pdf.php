@@ -48,7 +48,7 @@ if ( !class_exists( 'HPPostToPDF' ) ) {
 
 				$markup = $css_link . $markup;
 
-				$markup = preg_replace('~<img .*?\.(gif|png)".*?/>~sim', '', $markup);
+				$markup = preg_replace('/<img .*?\.png.*?\/>/', '', $markup);
 
 				require_once dirname( __FILE__ ) . '/dompdf/dompdf_config.inc.php';
 
